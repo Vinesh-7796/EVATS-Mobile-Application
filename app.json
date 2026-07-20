@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "EVATS Mobile",
+    "slug": "evats-mobile-poc",
+    "scheme": "evats",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.evats.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.evats.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow EVATS to save certificates to your Photos.",
+          "savePhotosPermission": "Allow EVATS to save certificates to your Photos."
+        }
+      ]
+    ]
+  }
+}
