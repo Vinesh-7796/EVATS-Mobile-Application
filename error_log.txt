@@ -1,8 +1,0 @@
- ERROR  VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.
-
-
- ERROR  Failed to download: [Error: Call to function 'ExpoMediaLibrary.requestPermissionsAsync' has been rejected.
-→ Caused by: You have requested the AUDIO permission, but it is not declared in AndroidManifest. Update expo-media-library config plugin to include the permission before requesting it.]
-
- ERROR  Failed to capture certificate: [Error: No view found with reactTag: 3164] Error: No view found with reactTag: 3164
-

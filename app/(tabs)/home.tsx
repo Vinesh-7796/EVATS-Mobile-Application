@@ -3,16 +3,24 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router'
 import { useProgressStore } from '../../src/stores/useProgressStore'
 import { useThemeStore } from '../../src/stores/useThemeStore'
+import { useUserStore } from '../../src/stores/useUserStore'
 import { getAllModules, getModulePrerequisite, getModuleInfo } from '../../src/data/moduleRegistry'
 import { isModuleUnlocked, getDaysUntilUnlock } from '../../src/utils/helpers'
 import { LearningMap3D } from '../../src/components/ui/LearningMap3D'
 import { ErrorBoundary } from '../../src/components/ui/ErrorBoundary'
+
+const ROLE_LABEL: Record<string, string> = {
+  trainee: 'Trainee',
+  intern: 'Intern',
+  admin: 'Admin',
+}
 
 export default function HomeScreen() {
   const router = useRouter()
   const { totalPoints, currentStreak, moduleUnlockDates, completedModules, isLoaded } = useProgressStore()
   const theme = useThemeStore(state => state.theme)
   const isDark = theme === 'dark'
+  const userRole = useUserStore(state => state.userRole)
   const [scrollEnabled, setScrollEnabled] = useState(true)
 
   const isModulePathUnlocked = (moduleId: string): boolean => {
@@ -44,6 +52,11 @@ export default function HomeScreen() {
       <View style={[styles.header, isDark && styles.headerDark]}>
         <Text style={[styles.title, isDark && styles.titleDark]}>EVATS</Text>
         <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>Electric Vehicle Advanced Training System</Text>
+        {userRole && (
+          <Text style={[styles.roleTag, isDark && styles.roleTagDark]}>
+            {ROLE_LABEL[userRole]}
+          </Text>
+        )}
       </View>
 
       <View style={styles.learningMapSection}>
@@ -149,6 +162,21 @@ const styles = StyleSheet.create({
   },
   subtitleDark: {
     color: '#888',
+  },
+  roleTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F97316',
+    marginTop: 6,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+  },
+  roleTagDark: {
+    color: '#F97316',
   },
   statsContainer: {
     flexDirection: 'row',

@@ -4,9 +4,15 @@ import { useUserStore } from '../../src/stores/useUserStore'
 import { useProgressStore } from '../../src/stores/useProgressStore'
 import { useThemeStore } from '../../src/stores/useThemeStore'
 
+const ROLE_DISPLAY: Record<string, { label: string; icon: string }> = {
+  trainee: { label: 'Trainee', icon: '👤' },
+  intern: { label: 'Intern', icon: '🎓' },
+  admin: { label: 'Admin', icon: '🔐' },
+}
+
 export default function ProfileScreen() {
   const router = useRouter()
-  const { userName, userId } = useUserStore()
+  const { userName, userId, userRole, clearUserRole } = useUserStore()
   const { totalPoints, completedModules, moduleResults, resetProgress, xp, getCurrentLevel, getNextLevel, getXpProgress } = useProgressStore()
   const { theme, toggleTheme } = useThemeStore()
   const isDark = theme === 'dark'
@@ -14,11 +20,12 @@ export default function ProfileScreen() {
   const currentLevel = getCurrentLevel()
   const nextLevel = getNextLevel()
   const xpProgress = getXpProgress()
+  const roleInfo = userRole ? ROLE_DISPLAY[userRole] : null
 
   const handleResetProgress = () => {
     Alert.alert(
       'Reset Progress',
-      'Are you sure you want to reset all progress? This cannot be undone.',
+      'Are you sure you want to reset all progress and return to login? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -26,7 +33,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await resetProgress()
-            Alert.alert('Success', 'Progress has been reset')
+            await clearUserRole()
+            router.replace('/')
           },
         },
       ]
@@ -53,6 +61,11 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.name}>{userName}</Text>
         <Text style={styles.userId}>ID: {userId}</Text>
+        {roleInfo && (
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>{roleInfo.icon} {roleInfo.label}</Text>
+          </View>
+        )}
         <View style={styles.levelRow}>
           <Text style={styles.levelBadge}>{currentLevel.badge}</Text>
           <Text style={styles.levelText}>{currentLevel.name} — {xp} XP</Text>
@@ -108,7 +121,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={[styles.buttonSecondary, isDark && styles.buttonSecondaryDark, { marginTop: 12 }]} onPress={handleResetProgress}>
           <Text style={[styles.buttonSecondaryText, isDark && styles.textLightDark, { color: isDark ? '#EF4444' : '#C2410C' }]}>
-            🔄 Reset Progress (For Testing)
+            🔄 Reset Progress & Re-Login
           </Text>
         </TouchableOpacity>
       </View>
@@ -160,6 +173,20 @@ const styles = StyleSheet.create({
   userId: {
     fontSize: 14,
     color: '#888',
+  },
+  roleBadge: {
+    marginTop: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.4)',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  roleBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F97316',
   },
   levelRow: {
     flexDirection: 'row',

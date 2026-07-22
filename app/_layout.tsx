@@ -3,18 +3,21 @@ import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useProgressStore } from '../src/stores/useProgressStore'
 import { useThemeStore } from '../src/stores/useThemeStore'
+import { useUserStore } from '../src/stores/useUserStore'
 
 export default function RootLayout() {
   const loadProgress = useProgressStore(state => state.loadProgress)
   const { theme, loadTheme, isThemeLoaded } = useThemeStore()
+  const { loadUserRole, isRoleLoaded } = useUserStore()
 
   useEffect(() => {
     loadProgress()
     loadTheme()
+    loadUserRole()
   }, [])
 
-  if (!isThemeLoaded) {
-    return null // Wait for theme settings to load
+  if (!isThemeLoaded || !isRoleLoaded) {
+    return null
   }
 
   const isDark = theme === 'dark'
@@ -32,6 +35,7 @@ export default function RootLayout() {
           },
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="learn/[moduleId]" options={{ title: 'Learn' }} />
         <Stack.Screen name="games/[moduleId]" options={{ title: 'Mini-Games' }} />
