@@ -3,6 +3,7 @@ import { Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useThemeStore } from '../../src/stores/useThemeStore'
 import { useProgressStore } from '../../src/stores/useProgressStore'
+import { HeaderThemeToggle, ThemeToggleButton } from '../../src/components/ui/ThemeToggleButton'
 
 export default function TabLayout() {
   const theme = useThemeStore(state => state.theme)
@@ -25,6 +26,7 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerRight: () => <HeaderThemeToggle />,
       }}
     >
       <Tabs.Screen
@@ -47,8 +49,17 @@ export default function TabLayout() {
                   {currentStreak}
                 </Text>
               </View>
+              <ThemeToggleButton />
             </View>
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="modules"
+        options={{
+          title: 'Modules',
+          tabBarIcon: ({ color, size }) => <Ionicons name="layers" size={size} color={color} />,
+          tabBarAccessibilityLabel: 'Modules tab',
         }}
       />
       <Tabs.Screen

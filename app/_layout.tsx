@@ -6,13 +6,14 @@ import { useProgressStore } from '../src/stores/useProgressStore'
 import { useThemeStore } from '../src/stores/useThemeStore'
 import { useUserStore } from '../src/stores/useUserStore'
 import { supabase } from '../src/lib/supabase'
+import { HeaderThemeToggle } from '../src/components/ui/ThemeToggleButton'
 
 WebBrowser.maybeCompleteAuthSession()
 
 export default function RootLayout() {
   const loadProgress = useProgressStore(state => state.loadProgress)
-  const { theme, loadTheme, isThemeLoaded } = useThemeStore()
-  const { loadUserRole, isRoleLoaded, checkSession, onAuthStateChanged } = useUserStore()
+  const { theme, loadTheme } = useThemeStore()
+  const { loadUserRole, checkSession, onAuthStateChanged } = useUserStore()
 
   useEffect(() => {
     loadProgress()
@@ -33,10 +34,6 @@ export default function RootLayout() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (!isThemeLoaded || !isRoleLoaded) {
-    return null
-  }
-
   const isDark = theme === 'dark'
 
   return (
@@ -50,6 +47,7 @@ export default function RootLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
+          headerRight: () => <HeaderThemeToggle />,
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
