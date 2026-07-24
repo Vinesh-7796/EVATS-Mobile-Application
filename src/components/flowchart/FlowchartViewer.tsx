@@ -191,6 +191,62 @@ const FlowchartViewer = forwardRef<FlowchartViewerHandle, FlowchartViewerProps>(
     // ── 1. Decode and inject SVG ──────────────────────────────────────────
     var b64 = "${HV_FLOWCHART_SVG_BASE64}";
     var svgString = decodeURIComponent(escape(atob(b64)));
+    var isDarkTheme = ${isDarkTheme};
+
+    // Resolve light-dark() in the source markup before the SVG is parsed.
+    // Android WebView does not consistently resolve it for HTML embedded in
+    // foreignObject labels, so post-render CSS overrides are not sufficient.
+    function resolveLightDarkFunctions(markup) {
+      var functionName = "light-dark(";
+      var result = "";
+      var cursor = 0;
+      var start;
+
+      while ((start = markup.indexOf(functionName, cursor)) !== -1) {
+        result += markup.slice(cursor, start);
+
+        var depth = 1;
+        var end = start + functionName.length;
+        while (end < markup.length && depth > 0) {
+          var character = markup.charAt(end);
+          if (character === "(") depth++;
+          if (character === ")") depth--;
+          end++;
+        }
+
+        if (depth !== 0) {
+          result += markup.slice(start);
+          return result;
+        }
+
+        var content = markup.slice(start + functionName.length, end - 1);
+        var colors = [];
+        var color = "";
+        var colorDepth = 0;
+        for (var index = 0; index < content.length; index++) {
+          var colorCharacter = content.charAt(index);
+          if (colorCharacter === "(") colorDepth++;
+          else if (colorCharacter === ")") colorDepth--;
+
+          if (colorCharacter === "," && colorDepth === 0) {
+            colors.push(color.trim());
+            color = "";
+          } else {
+            color += colorCharacter;
+          }
+        }
+        colors.push(color.trim());
+
+        result += colors.length >= 2
+          ? (isDarkTheme ? colors[1] : colors[0])
+          : markup.slice(start, end);
+        cursor = end;
+      }
+
+      return result + markup.slice(cursor);
+    }
+
+    svgString = resolveLightDarkFunctions(svgString);
     var container = document.getElementById("container");
     container.innerHTML = svgString;
 
@@ -276,7 +332,9 @@ const FlowchartViewer = forwardRef<FlowchartViewerHandle, FlowchartViewerProps>(
     if (svgEl) {
       svgEl.querySelectorAll("[style*='light-dark'], [fill*='light-dark'], [stroke*='light-dark']").forEach(function(el) {
         var rawStyle = el.getAttribute("style") || "";
-        ["fill", "stroke"].forEach(function(prop) {
+        // SVG text commonly uses fill, while draw.io foreignObject labels use
+        // CSS color. Android WebView does not reliably resolve light-dark().
+        ["fill", "stroke", "color"].forEach(function(prop) {
           var ldValue = null;
           var source = "style";
           

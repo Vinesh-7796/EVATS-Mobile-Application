@@ -8,8 +8,8 @@ import {
   ScrollView,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useState, useRef } from 'react'
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { VideoView, useVideoPlayer } from 'expo-video'
 import { getModuleInfo, getModuleComponents } from '../../src/data/moduleRegistry'
 import FlowchartViewer, { FlowchartViewerHandle } from '../../src/components/flowchart/FlowchartViewer'
 import { ErrorBoundary } from '../../src/components/ui/ErrorBoundary'
@@ -39,13 +39,26 @@ export default function LearnScreen() {
   const [showVideo, setShowVideo] = useState(false)
   const [scrollEnabled, setScrollEnabled] = useState(true)
   const [flowchartHeight, setFlowchartHeight] = useState(380)
-  const videoRef = useRef<Video>(null)
   const flowchartRef = useRef<FlowchartViewerHandle>(null)
   const theme = useThemeStore(state => state.theme)
   const isDark = theme === 'dark'
 
   const flowchart = getModuleInfo(moduleId as string)
   const components = getModuleComponents(moduleId as string)
+
+  const player = useVideoPlayer(
+    flowchart?.id === 'hv-power' ? require('../../assets/videos/HV.mp4') : null,
+    (p) => {
+      p.loop = false
+    }
+  )
+
+  useEffect(() => {
+    const sub = player.addListener('playToEnd', () => {
+      setShowVideo(false)
+    })
+    return () => sub.remove()
+  }, [player])
 
   if (!flowchart) {
     return (
@@ -61,19 +74,12 @@ export default function LearnScreen() {
 
   const handleWatchVideo = () => {
     setShowVideo(true)
+    player.replay()
   }
 
-  const handleCloseVideo = async () => {
-    if (videoRef.current) {
-      await videoRef.current.stopAsync()
-    }
+  const handleCloseVideo = () => {
+    player.pause()
     setShowVideo(false)
-  }
-
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && status.didJustFinish) {
-      setShowVideo(false)
-    }
   }
 
   const handleComponentListPress = (component: ComponentDetail) => {
@@ -206,14 +212,11 @@ export default function LearnScreen() {
           </View>
           <View style={styles.videoContainer}>
             {flowchart.id === 'hv-power' ? (
-              <Video
-                ref={videoRef}
-                source={require('../../assets/videos/HV.mp4')}
+              <VideoView
+                player={player}
                 style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={true}
-                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                contentFit="contain"
+                fullscreenOptions={{ enable: true }}
               />
             ) : (
               <View style={{ justifyContent: 'center', alignItems: 'center', padding: 24 }}>

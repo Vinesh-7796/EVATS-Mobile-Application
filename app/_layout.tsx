@@ -1,19 +1,36 @@
 import { Stack } from 'expo-router'
 import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import * as WebBrowser from 'expo-web-browser'
 import { useProgressStore } from '../src/stores/useProgressStore'
 import { useThemeStore } from '../src/stores/useThemeStore'
 import { useUserStore } from '../src/stores/useUserStore'
+import { supabase } from '../src/lib/supabase'
+
+WebBrowser.maybeCompleteAuthSession()
 
 export default function RootLayout() {
   const loadProgress = useProgressStore(state => state.loadProgress)
   const { theme, loadTheme, isThemeLoaded } = useThemeStore()
-  const { loadUserRole, isRoleLoaded } = useUserStore()
+  const { loadUserRole, isRoleLoaded, checkSession, onAuthStateChanged } = useUserStore()
 
   useEffect(() => {
     loadProgress()
     loadTheme()
     loadUserRole()
+    checkSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        onAuthStateChanged(
+          session.user.id,
+          session.user.email || undefined,
+          session.user.user_metadata?.full_name as string | undefined,
+        )
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   if (!isThemeLoaded || !isRoleLoaded) {
@@ -36,6 +53,8 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="role-selection" options={{ headerShown: false }} />
+        <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="learn/[moduleId]" options={{ title: 'Learn' }} />
         <Stack.Screen name="games/[moduleId]" options={{ title: 'Mini-Games' }} />

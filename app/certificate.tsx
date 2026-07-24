@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react'
+import React, { useRef, useCallback, useState, useEffect } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { captureRef } from 'react-native-view-shot'
@@ -7,19 +7,30 @@ import * as MediaLibrary from 'expo-media-library'
 import { useUserStore } from '../src/stores/useUserStore'
 import { useProgressStore } from '../src/stores/useProgressStore'
 import { getModuleInfo } from '../src/data/moduleRegistry'
-import { formatDate, calculatePercentile } from '../src/utils/helpers'
+import { formatDate } from '../src/utils/helpers'
+import { fetchPercentile } from '../src/lib/syncService'
 
 export default function CertificateScreen() {
   const router = useRouter()
   const { userName, userId } = useUserStore()
   const { moduleResults, completedModules, isModuleFullyCompleted } = useProgressStore()
   const certificateRef = useRef<View>(null)
+  const [realPercentile, setRealPercentile] = useState<number | null>(null)
 
   // Use the most recently completed module for certificate
   const latestModuleId = completedModules.length > 0 ? completedModules[completedModules.length - 1] : null
   const moduleResult = latestModuleId ? moduleResults[latestModuleId] : null
   const moduleInfo = latestModuleId ? getModuleInfo(latestModuleId) : undefined
   const allDone = latestModuleId ? isModuleFullyCompleted(latestModuleId) : false
+
+  useEffect(() => {
+    setRealPercentile(null)
+    if (latestModuleId && moduleResult) {
+      fetchPercentile(latestModuleId, moduleResult.percentage).then(p => {
+        if (p !== null) setRealPercentile(p)
+      })
+    }
+  }, [latestModuleId, moduleResult])
 
   if (!moduleResult || !moduleInfo || !allDone) {
     return (
@@ -35,7 +46,6 @@ export default function CertificateScreen() {
     )
   }
 
-  const percentile = calculatePercentile(moduleResult.score, moduleResult.totalPoints)
   const completionDate = formatDate(moduleResult.completedAt)
 
   const captureCertificate = useCallback(async (): Promise<string | null> => {
@@ -171,7 +181,9 @@ export default function CertificateScreen() {
                     </View>
                     <View style={styles.statItem}>
                       <Text style={styles.statLabel}>Percentile</Text>
-                      <Text style={styles.statValue}>{percentile}th</Text>
+                      <Text style={styles.statValue}>
+                        {realPercentile === null ? '—' : `${realPercentile}th`}
+                      </Text>
                     </View>
                   </View>
 

@@ -4,6 +4,7 @@ import type { UserProgress, QuizResult, AchievementId, WrongAnswerRecord, XpLeve
 import { XP_LEVELS, ACHIEVEMENTS, GAME_STAGES } from '../types'
 import { MODULE_ORDER } from '../data/moduleRegistry'
 import { calculateGrade } from '../utils/helpers'
+import { syncModuleProgress, syncQuizAttempt, syncGameAttempt, syncStreak } from '../lib/syncService'
 
 const STORAGE_KEY = '@evats_user_progress'
 
@@ -35,6 +36,12 @@ interface ProgressState extends UserProgress {
 }
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0]
+
+const toIsoTimestamp = (value: Date | string | undefined): string | null => {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
 
 const getDefaultProgress = (): UserProgress => {
   const today = getTodayDateString()
@@ -157,6 +164,28 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     }
 
     await get().saveProgress()
+
+    // P1.1 direct backend mirror. Offline queuing is intentionally deferred to P1.2.
+    const s = get()
+    void syncQuizAttempt({
+      module_id: moduleId,
+      score: result.score,
+      total_points: result.totalPoints,
+      percentage: result.percentage,
+      grade: result.grade,
+      correct_answers: result.correctAnswers,
+      total_questions: result.totalQuestions,
+    })
+    for (const [progressModuleId, unlockedAt] of Object.entries(s.moduleUnlockDates)) {
+      const isCompleted = s.completedModules.includes(progressModuleId)
+      void syncModuleProgress(
+        progressModuleId,
+        isCompleted ? 'completed' : 'unlocked',
+        unlockedAt,
+        isCompleted ? toIsoTimestamp(s.moduleResults[progressModuleId]?.completedAt) : null,
+      )
+    }
+    void syncStreak(s.currentStreak, Math.max(s.currentStreak, s.streakCalendar.activeDays.length), today)
   },
 
   updateStreak: () => {
@@ -174,6 +203,13 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     } else {
       set({ currentStreak: 1, lastActivityDate: today })
     }
+
+    const updated = get()
+    void syncStreak(
+      updated.currentStreak,
+      Math.max(updated.currentStreak, updated.streakCalendar.activeDays.length),
+      today,
+    )
   },
 
   addPoints: (points: number) => {
@@ -202,6 +238,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     if (prev.includes(gameType)) return
     const updated = [...prev, gameType]
     const newCompletedGameTypes = { ...state.completedGameTypes, [moduleId]: updated }
+    let completedModuleResult: QuizResult | null = null
 
     // Best-score tracking per game type
     const gameTypeResultKey = `${moduleId}:${gameType}`
@@ -263,6 +300,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         completedAt: new Date(),
         answers: [],
       }
+      completedModuleResult = moduleResult
 
       // Unlock module + daily drip
       const completedModules = state.completedModules.includes(moduleId)
@@ -298,6 +336,40 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     }
 
     await get().saveProgress()
+
+    // P1.1 direct backend mirror. Offline queuing is intentionally deferred to P1.2.
+    void syncGameAttempt({
+      module_id: moduleId,
+      game_type: gameType,
+      score: result.score,
+      percentage: result.percentage,
+      grade: result.grade,
+    })
+    // The four mini-games are the module evaluation. Store one aggregate
+    // evaluation attempt when the final stage completes so the P1.1 percentile
+    // query compares complete module outcomes, not individual game stages.
+    if (completedModuleResult) {
+      void syncQuizAttempt({
+        module_id: moduleId,
+        score: completedModuleResult.score,
+        total_points: completedModuleResult.totalPoints,
+        percentage: completedModuleResult.percentage,
+        grade: completedModuleResult.grade,
+        correct_answers: completedModuleResult.correctAnswers,
+        total_questions: completedModuleResult.totalQuestions,
+      })
+    }
+    const sg = get()
+    for (const [progressModuleId, unlockedAt] of Object.entries(sg.moduleUnlockDates)) {
+      const isCompleted = sg.completedModules.includes(progressModuleId)
+      void syncModuleProgress(
+        progressModuleId,
+        isCompleted ? 'completed' : 'unlocked',
+        unlockedAt,
+        isCompleted ? toIsoTimestamp(sg.moduleResults[progressModuleId]?.completedAt) : null,
+      )
+    }
+    void syncStreak(sg.currentStreak, Math.max(sg.currentStreak, sg.streakCalendar.activeDays.length), today)
   },
 
   isGameTypeCompleted: (moduleId: string, gameType: GameStageId) => {
